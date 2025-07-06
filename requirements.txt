@@ -17,3 +17,4 @@ FlagEmbedding
 chromadb==0.4.24
 protobuf<4.0.0
 opentelemetry-exporter-otlp-proto-grpc
+sentencepiece==0.1.97
