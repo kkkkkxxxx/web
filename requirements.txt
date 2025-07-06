@@ -4,3 +4,4 @@ numpy
 FlagEmbedding
 chromadb
 beautifulsoup4
+duckduckgo_search

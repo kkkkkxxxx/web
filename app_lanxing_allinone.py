@@ -535,11 +535,11 @@ if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
-    assistant_message = st.chat_message("assistant")
-    claim_placeholder = assistant_message.empty()
-    information_placeholder = assistant_message.empty()
-    evidence_placeholder = assistant_message.empty()
-    verdict_placeholder = assistant_message.empty()
+    # 不要用 assistant_message = st.chat_message("assistant")
+    claim_placeholder = st.empty()
+    information_placeholder = st.empty()
+    evidence_placeholder = st.empty()
+    verdict_placeholder = st.empty()
 
     fact_checker = FactChecker(model=model_option, temperature=temperature, max_tokens=max_tokens)
 
