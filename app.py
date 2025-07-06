@@ -1,4 +1,4 @@
-import streamlit as st
+import streamlit as st 
 import os
 from datetime import datetime
 from fact_checker_v4_english import FactChecker
@@ -34,7 +34,7 @@ with st.sidebar:
     # 模型选择 - 已更新为本地Qwen模型
     model_option = st.selectbox(
         "选择模型",
-        ["qwen2.5-14b-instruct-1m"],# "qwen2.5-14b-instruct-2m", "glm4-9b", "llama3-8b-instruct" qwen2.5-7b-instruct-1m
+        ["qwen2.5-14b-instruct-1m"],  # 你可以扩展更多模型选项
         index=0,
         help="使用本地Qwen2.5模型"
     )
@@ -75,76 +75,74 @@ if user_input:
     with st.chat_message("user"):
         st.markdown(user_input)
     
-    # 创建助手消息容器用于流式输出
-    assistant_message = st.chat_message("assistant")
-    
-    # 创建空的placeholder组件用于逐步更新
-    claim_placeholder = assistant_message.empty()
-    information_placeholder=assistant_message.empty()
-    evidence_placeholder = assistant_message.empty()
-    verdict_placeholder = assistant_message.empty()
+    # 使用 with 上下文创建助手消息容器
+    with st.chat_message("assistant"):
+        # 创建多个独立占位符，避免 DOM 错误
+        claim_placeholder = st.empty()
+        information_placeholder = st.empty()
+        evidence_placeholder = st.empty()
+        verdict_placeholder = st.empty()
 
-    # 初始化FactChecker
-    fact_checker = FactChecker(api_base, model_option, temperature, max_tokens)
-    
-    # 第1步：提取声明
-    claim_placeholder.markdown("### 🔍 正在提取新闻的核心声明...")
-    claim = fact_checker.extract_claim(user_input)
+        # 初始化FactChecker
+        fact_checker = FactChecker(api_base, model_option, temperature, max_tokens)
 
-    # 处理claim字符串，提取"claim:"后面的内容
-    if "claim:" in claim.lower():
-        claim = claim.split("claim:")[-1].strip()
-    claim_placeholder.markdown(f"### 🔍 提取新闻的核心声明\n\n{claim}")
+        # 第1步：提取声明
+        claim_placeholder.markdown("### 🔍 正在提取新闻的核心声明...")
+        claim = fact_checker.extract_claim(user_input)
 
-     #提取关键信息
-    information_placeholder.markdown(f"### 🔍 正在提取新闻的关键信息...")
-    information=fact_checker.extract_keyinformation(user_input)
-    information_placeholder.markdown(f"### 🔍 提取新闻的关键信息\n\n{information}")
-    
-    # 第2步：搜索证据
-    evidence_placeholder.markdown("### 🌐 正在搜索相关证据...")
-    evidence_docs = fact_checker.search_evidence(claim)
-    
-    # 第3步：获取相关证据块
-    evidence_placeholder.markdown("### 🌐 正在分析证据相关性...")
-    evidence_chunks = fact_checker.get_evidence_chunks(evidence_docs, claim)
-    
-    # 显示证据结果
-    evidence_md = "### 🔗 证据来源\n\n"
-    for j, chunk in enumerate(evidence_chunks[:-1]):  # 跳过最后一个，与原始代码保持一致
-        evidence_md += f"**[{j+1}]:**\n"
-        evidence_md += f"{chunk['text']}\n"
-        evidence_md += f"来源: {chunk['source']}\n\n"
-    
-    evidence_placeholder.markdown(evidence_md)
-    
-    # 第4步：评估声明
-    verdict_placeholder.markdown("### ⚖️ 正在评估声明真实性...")
-    evaluation = fact_checker.evaluate_claim(information,user_input,evidence_chunks)
-    
-    # 确定结论表情符号
-    verdict = evaluation["verdict"]
-    if verdict.upper() == "TRUE":
-        emoji = "✅"
-        verdict_cn = "正确"
-    elif verdict.upper() == "FALSE":
-        emoji = "❌"
-        verdict_cn = "错误"
-    elif verdict.upper() == "PARTIALLY TRUE":
-        emoji = "⚠️"
-        verdict_cn = "部分正确"
-    else:
-        emoji = "❓"
-        verdict_cn = "无法验证"
-    
-    # 显示最终结论
-    verdict_md = f"### {emoji} 结论: {verdict_cn}\n\n"
-    verdict_md += f"### 推理过程\n\n{evaluation['reasoning']}\n\n"
-    
-    verdict_placeholder.markdown(verdict_md)
-    
-    # 整合完整的响应内容用于保存到聊天历史
-    full_response = f"""
+        # 处理claim字符串，提取"claim:"后面的内容
+        if "claim:" in claim.lower():
+            claim = claim.split("claim:")[-1].strip()
+        claim_placeholder.markdown(f"### 🔍 提取新闻的核心声明\n\n{claim}")
+
+        # 提取关键信息
+        information_placeholder.markdown("### 🔍 正在提取新闻的关键信息...")
+        information = fact_checker.extract_keyinformation(user_input)
+        information_placeholder.markdown(f"### 🔍 提取新闻的关键信息\n\n{information}")
+
+        # 第2步：搜索证据
+        evidence_placeholder.markdown("### 🌐 正在搜索相关证据...")
+        evidence_docs = fact_checker.search_evidence(claim)
+
+        # 第3步：获取相关证据块
+        evidence_placeholder.markdown("### 🌐 正在分析证据相关性...")
+        evidence_chunks = fact_checker.get_evidence_chunks(evidence_docs, claim)
+
+        # 显示证据结果
+        evidence_md = "### 🔗 证据来源\n\n"
+        for j, chunk in enumerate(evidence_chunks[:-1]):  # 跳过最后一个，与原始代码保持一致
+            evidence_md += f"**[{j+1}]:**\n"
+            evidence_md += f"{chunk['text']}\n"
+            evidence_md += f"来源: {chunk['source']}\n\n"
+        evidence_placeholder.markdown(evidence_md)
+
+        # 第4步：评估声明
+        verdict_placeholder.markdown("### ⚖️ 正在评估声明真实性...")
+        evaluation = fact_checker.evaluate_claim(information, user_input, evidence_chunks)
+
+        # 确定结论表情符号
+        verdict = evaluation["verdict"]
+        if verdict.upper() == "TRUE":
+            emoji = "✅"
+            verdict_cn = "正确"
+        elif verdict.upper() == "FALSE":
+            emoji = "❌"
+            verdict_cn = "错误"
+        elif verdict.upper() == "PARTIALLY TRUE":
+            emoji = "⚠️"
+            verdict_cn = "部分正确"
+        else:
+            emoji = "❓"
+            verdict_cn = "无法验证"
+
+        # 显示最终结论
+        verdict_md = f"### {emoji} 结论: {verdict_cn}\n\n"
+        verdict_md += f"### 推理过程\n\n{evaluation['reasoning']}\n\n"
+
+        verdict_placeholder.markdown(verdict_md)
+
+        # 整合完整的响应内容用于保存到聊天历史
+        full_response = f"""
 ### 🔍 提取新闻的核心声明
 
 {claim}
@@ -161,6 +159,6 @@ if user_input:
 
 {verdict_md}
 """
-    
-    # 添加助手响应到聊天历史
-    st.session_state.messages.append({"role": "assistant", "content": full_response})
+
+        # 添加助手响应到聊天历史
+        st.session_state.messages.append({"role": "assistant", "content": full_response})
