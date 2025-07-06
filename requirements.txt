@@ -1,9 +1,19 @@
+# 核心框架
 streamlit
 requests
 numpy
-FlagEmbedding
-chromadb
 beautifulsoup4
-duckduckgo_search
+
+# 搜索
+duckduckgo-search>=0.9
+
+# 阿里云大模型
 dashscope
-protobuf==3.20.3
+
+# 嵌入模型（BGE-M3）
+FlagEmbedding
+
+# 知识库（Chroma）
+chromadb==0.4.24
+protobuf<4.0.0
+opentelemetry-exporter-otlp-proto-grpc
