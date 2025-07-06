@@ -535,28 +535,17 @@ if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
-    # 不要用 assistant_message = st.chat_message("assistant")
-    claim_placeholder = st.empty()
-    information_placeholder = st.empty()
-    evidence_placeholder = st.empty()
-    verdict_placeholder = st.empty()
 
     fact_checker = FactChecker(model=model_option, temperature=temperature, max_tokens=max_tokens)
 
-    claim_placeholder.markdown("### 🔍 正在提取新闻的核心声明...")
+    # 直接生成所有内容
     claim = fact_checker.extract_claim(user_input)
     if "claim:" in claim.lower():
         claim = claim.split("claim:")[-1].strip()
-    claim_placeholder.markdown(f"### 🔍 提取新闻的核心声明\n\n{claim}")
 
-    information_placeholder.markdown(f"### 🔍 正在提取新闻的关键信息...")
     information = fact_checker.extract_keyinformation(user_input)
-    information_placeholder.markdown(f"### 🔍 提取新闻的关键信息\n\n{information}")
 
-    evidence_placeholder.markdown("### 🌐 正在搜索相关证据...")
     evidence_docs = fact_checker.search_evidence(claim)
-
-    evidence_placeholder.markdown("### 🌐 正在分析证据相关性...")
     evidence_chunks = fact_checker.get_evidence_chunks(evidence_docs, claim)
 
     evidence_md = "### 🔗 证据来源\n\n"
@@ -564,11 +553,8 @@ if user_input:
         evidence_md += f"**[{j+1}]:**\n"
         evidence_md += f"{chunk['text']}\n"
         evidence_md += f"来源: {chunk['source']}\n\n"
-    evidence_placeholder.markdown(evidence_md)
 
-    verdict_placeholder.markdown("### ⚖️ 正在评估声明真实性...")
     evaluation = fact_checker.evaluate_claim(information, user_input, evidence_chunks)
-
     verdict = evaluation["verdict"]
     if verdict.upper() == "TRUE":
         emoji = "✅"
@@ -585,7 +571,6 @@ if user_input:
 
     verdict_md = f"### {emoji} 结论: {verdict_cn}\n\n"
     verdict_md += f"### 推理过程\n\n{evaluation['reasoning']}\n\n"
-    verdict_placeholder.markdown(verdict_md)
 
     full_response = f"""
 ### 🔍 提取新闻的核心声明
