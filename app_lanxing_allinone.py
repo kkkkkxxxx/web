@@ -1,6 +1,3 @@
-import sys
-import pysqlite3
-sys.modules["sqlite3"] = sys.modules.pop("pysqlite3")
 import streamlit as st
 import os
 from datetime import datetime
@@ -199,24 +196,23 @@ class FactChecker:
         except Exception as e:
             st.error(f"搜索本地知识库错误: {str(e)}")
             return []
-    
+
     def search_baidu(self, query, num_results=5):
+        """百度搜索摘要抓取"""
         headers = {
             "User-Agent": "Mozilla/5.0"
         }
         url = f"https://www.baidu.com/s?wd={urllib.parse.quote(query)}"
         try:
             resp = requests.get(url, headers=headers, timeout=10)
-            # st.write(resp.text[:1000])  # 调试用
             soup = BeautifulSoup(resp.text, "html.parser")
             results = []
-            for idx, result in enumerate(soup.select(".result, .c-container")[:num_results]):
-                title_tag = result.select_one("h3")
-                title = title_tag.get_text(strip=True) if title_tag else ""
-                snippet_tag = result.select_one(".c-abstract, .c-span-last, .content-right_8Zs40")
-                snippet = snippet_tag.get_text(strip=True) if snippet_tag else ""
-                link_tag = result.select_one("a")
-                link = link_tag["href"] if link_tag else ""
+            for idx, result in enumerate(soup.select(".result")[:num_results]):
+                title = result.select_one("h3")
+                title = title.get_text(strip=True) if title else ""
+                snippet = result.select_one(".c-abstract") or result.select_one(".c-span-last")
+                snippet = snippet.get_text(strip=True) if snippet else ""
+                link = result.select_one("a")["href"] if result.select_one("a") else ""
                 results.append({
                     "title": title,
                     "url": link,
@@ -226,10 +222,10 @@ class FactChecker:
         except Exception as e:
             st.warning(f"百度搜索失败: {e}")
             return []
-        
+
     def search_evidence(self, claim: str, num_results: int = 5) -> List[Dict[str, str]]:
-        evidence=[]
-        #DuckDuckGo（外网）
+        evidence = []
+        # DuckDuckGo（外网）
         try:
             from duckduckgo_search import DDGS
             ddgs = DDGS(timeout=60)
@@ -242,12 +238,15 @@ class FactChecker:
                 })
         except Exception as e:
             st.warning(f"DuckDuckGo搜索失败: {e}")
-        # 国内百度
+
+        # 百度（国内）
         baidu_results = self.search_baidu(claim, num_results=num_results)
         evidence.extend(baidu_results)
+
         # 本地知识库
         local_evidence = self.search_local_knowledge(claim, top_k=num_results)
         evidence.extend(local_evidence)
+
         return evidence
 
     def get_evidence_chunks(self, evidence_docs: List[Dict[str, str]], claim: str, chunk_size: int = 200,
@@ -397,7 +396,7 @@ st.markdown("""
 <style>
 /* 动态渐变背景 */
 body, [data-testid="stAppViewContainer"] {
-    background: linear-gradient(120deg, #1e293b 0%, #232a36 100%) !important;
+    background: linear-gradient(120deg, #0f2027 0%, #2c5364 100%, #00eaff 200%) !important;
     animation: gradientBG 10s ease infinite;
     background-size: 200% 200%;
 }
@@ -407,57 +406,50 @@ body, [data-testid="stAppViewContainer"] {
     100% {background-position: 0% 50%;}
 }
 
-/* 玻璃拟态卡片和内容区 */
-.st-emotion-cache-1v0mbdj, .st-emotion-cache-1kyxreq, .stChatMessage, .stMarkdown, .stText, .stChatMessageContent {
-    background: rgba(35, 42, 54, 0.92) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 4px 24px 0 rgba(0,180,216,0.13);
+/* 玻璃拟态卡片 */
+.st-emotion-cache-1v0mbdj, .st-emotion-cache-1kyxreq, .stChatMessage {
+    background: rgba(30, 41, 59, 0.7) !important;
+    border-radius: 18px !important;
+    box-shadow: 0 8px 32px 0 rgba(0,234,255,0.18);
     backdrop-filter: blur(8px);
-    border: 1.5px solid #00b4d822;
-    padding: 1.5em 2em !important;
-    margin-bottom: 1.2em !important;
-    color: #e0e6ed !important;
-    font-family: 'JetBrains Mono', 'Consolas', 'Arial', sans-serif;
+    border: 1.5px solid rgba(0,234,255,0.18);
+    padding: 1.8em 2.2em !important;
+    margin-bottom: 1.7em !important;
+    transition: box-shadow 0.3s;
 }
-
-/* 聊天输入框美化 */
-.stChatInputContainer, .stTextInput, .stTextArea, .stTextInput>div>input, .stTextArea>div>textarea {
-    background: rgba(35, 42, 54, 0.98) !important;
-    border-radius: 12px !important;
-    border: 1.5px solid #00b4d833 !important;
-    box-shadow: 0 0 8px #00b4d822;
-    color: #e0e6ed !important;
+.st-emotion-cache-1v0mbdj:hover, .st-emotion-cache-1kyxreq:hover, .stChatMessage:hover {
+    box-shadow: 0 0 24px 4px #00eaff55;
 }
 
 /* 科技感标题字体和发光 */
 h1, h2, h3, h4 {
-    color: #00b4d8 !important;
+    color: #00eaff !important;
     letter-spacing: 1.5px;
     font-family: 'Orbitron', 'Consolas', 'Arial', sans-serif;
-    text-shadow: 0 0 8px #00b4d866, 0 0 2px #fff;
+    text-shadow: 0 0 8px #00eaff88, 0 0 2px #fff;
 }
 
 /* 按钮动效 */
 .stButton>button {
-    background: linear-gradient(90deg, #00b4d8 0%, #005bea 100%);
+    background: linear-gradient(90deg, #00eaff 0%, #005bea 100%);
     color: #fff;
     border: none;
     border-radius: 10px;
     font-weight: bold;
     font-size: 1.1em;
-    box-shadow: 0 0 12px #00b4d844;
+    box-shadow: 0 0 12px #00eaff44;
     transition: 0.2s, box-shadow 0.3s;
 }
 .stButton>button:hover {
-    background: linear-gradient(90deg, #005bea 0%, #00b4d8 100%);
+    background: linear-gradient(90deg, #005bea 0%, #00eaff 100%);
     color: #fff;
-    box-shadow: 0 0 24px #00b4d8;
+    box-shadow: 0 0 24px #00eaff;
     transform: scale(1.05);
 }
 
 /* 滑块美化 */
 .stSlider>div>div {
-    background: #232a36 !important;
+    background: #232526 !important;
     border-radius: 8px;
 }
 
@@ -465,24 +457,39 @@ h1, h2, h3, h4 {
 hr {
     border: none;
     border-top: 2.5px solid;
-    border-image: linear-gradient(90deg, #00b4d8, #005bea, #00b4d8) 1;
+    border-image: linear-gradient(90deg, #00eaff, #005bea, #00eaff) 1;
     margin: 2em 0;
 }
 
 /* 滚动条 */
 ::-webkit-scrollbar-thumb {
-    background: linear-gradient(90deg, #00b4d8 0%, #005bea 100%);
+    background: linear-gradient(90deg, #00eaff 0%, #005bea 100%);
     border-radius: 8px;
+}
+
+/* 聊天输入框美化 */
+.stChatInputContainer {
+    background: rgba(0,234,255,0.08) !important;
+    border-radius: 12px !important;
+    border: 1.5px solid #00eaff33 !important;
+    box-shadow: 0 0 8px #00eaff22;
+}
+
+/* 卡片内容字体 */
+.stMarkdown, .stText, .stChatMessageContent {
+    font-family: 'JetBrains Mono', 'Consolas', 'Arial', sans-serif;
+    font-size: 1.08em;
+    color: #e0e6ed;
 }
 
 /* 图标动画 */
 .icon-glow {
-    filter: drop-shadow(0 0 8px #00b4d8cc);
+    filter: drop-shadow(0 0 8px #00eaffcc);
     animation: iconGlow 2s infinite alternate;
 }
 @keyframes iconGlow {
-    0% { filter: drop-shadow(0 0 8px #00b4d8cc);}
-    100% { filter: drop-shadow(0 0 24px #00b4d8);}
+    0% { filter: drop-shadow(0 0 8px #00eaffcc);}
+    100% { filter: drop-shadow(0 0 24px #00eaff);}
 }
 </style>
 <link href="https://fonts.googleapis.com/css?family=Orbitron:700&display=swap" rel="stylesheet">
@@ -538,26 +545,40 @@ if user_input:
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user"):
         st.markdown(user_input)
+    assistant_message = st.chat_message("assistant")
+    claim_placeholder = assistant_message.empty()
+    information_placeholder = assistant_message.empty()
+    evidence_placeholder = assistant_message.empty()
+    verdict_placeholder = assistant_message.empty()
 
     fact_checker = FactChecker(model=model_option, temperature=temperature, max_tokens=max_tokens)
 
-    # 直接生成所有内容
+    claim_placeholder.markdown("### 🔍 正在提取新闻的核心声明...")
     claim = fact_checker.extract_claim(user_input)
     if "claim:" in claim.lower():
         claim = claim.split("claim:")[-1].strip()
+    claim_placeholder.markdown(f"### 🔍 提取新闻的核心声明\n\n{claim}")
 
+    information_placeholder.markdown(f"### 🔍 正在提取新闻的关键信息...")
     information = fact_checker.extract_keyinformation(user_input)
+    information_placeholder.markdown(f"### 🔍 提取新闻的关键信息\n\n{information}")
 
+    evidence_placeholder.markdown("### 🌐 正在搜索相关证据...")
     evidence_docs = fact_checker.search_evidence(claim)
+
+    evidence_placeholder.markdown("### 🌐 正在分析证据相关性...")
     evidence_chunks = fact_checker.get_evidence_chunks(evidence_docs, claim)
 
     evidence_md = "### 🔗 证据来源\n\n"
-    for j, chunk in enumerate(evidence_chunks):
+    for j, chunk in enumerate(evidence_chunks[:-1]):
         evidence_md += f"**[{j+1}]:**\n"
         evidence_md += f"{chunk['text']}\n"
         evidence_md += f"来源: {chunk['source']}\n\n"
+    evidence_placeholder.markdown(evidence_md)
 
+    verdict_placeholder.markdown("### ⚖️ 正在评估声明真实性...")
     evaluation = fact_checker.evaluate_claim(information, user_input, evidence_chunks)
+
     verdict = evaluation["verdict"]
     if verdict.upper() == "TRUE":
         emoji = "✅"
@@ -574,6 +595,7 @@ if user_input:
 
     verdict_md = f"### {emoji} 结论: {verdict_cn}\n\n"
     verdict_md += f"### 推理过程\n\n{evaluation['reasoning']}\n\n"
+    verdict_placeholder.markdown(verdict_md)
 
     full_response = f"""
 ### 🔍 提取新闻的核心声明
